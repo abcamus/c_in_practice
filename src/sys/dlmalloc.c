@@ -2570,8 +2570,12 @@ typedef struct malloc_segment* msegmentptr;
 #define SMALLBIN_SHIFT    (3U)
 #define SMALLBIN_WIDTH    (SIZE_T_ONE << SMALLBIN_SHIFT)
 #define TREEBIN_SHIFT     (8U)
-#define MIN_LARGE_SIZE    (SIZE_T_ONE << TREEBIN_SHIFT)
-#define MAX_SMALL_SIZE    (MIN_LARGE_SIZE - SIZE_T_ONE)
+#define MIN_LARGE_SIZE    (SIZE_T_ONE << TREEBIN_SHIFT) /* 256 bytes */
+#define MAX_SMALL_SIZE    (MIN_LARGE_SIZE - SIZE_T_ONE) /* 255 */
+/* CHUNK_ALIGH_MASK: 2 * sizeof(void *) - 1
+ * CHUNK_OVERHEAD: 1个size_t(未定义FOOTERS)或者2个size_t(定义FOOTERS)
+ * 255 - 7 - 4 = 244 bytes
+ */
 #define MAX_SMALL_REQUEST (MAX_SMALL_SIZE - CHUNK_ALIGN_MASK - CHUNK_OVERHEAD)
 
 struct malloc_state {
@@ -4564,56 +4568,82 @@ void* dlmalloc(size_t bytes) {
   ensure_initialization(); /* initialize in sys_alloc if not using locks */
 #endif
 
-  if (!PREACTION(gm)) {
-    void* mem;
+  if (!PREACTION(gm)) { /* PREACTION is SUCCESSFUL */
+    void* mem;  /* return mem pointer */
     size_t nb;
-    if (bytes <= MAX_SMALL_REQUEST) {
+    if (bytes <= MAX_SMALL_REQUEST) {   /* bytes <= 244 */
       bindex_t idx;
       binmap_t smallbits;
+      /* MIN_CHUNK_SIZE: sizeof(mchunk) align with 2*sizeof(void *) */
       nb = (bytes < MIN_REQUEST)? MIN_CHUNK_SIZE : pad_request(bytes);
+      /* 经过上述操作，nb已经按照8字节对齐，下面获取small bin的索引 */
       idx = small_index(nb);
+      /* small bins对应的bitmap */
       smallbits = gm->smallmap >> idx;
-
+      
+      /* 当前bin或者下一个bin非空 */
       if ((smallbits & 0x3U) != 0) { /* Remainderless fit to a smallbin. */
         mchunkptr b, p;
+        /* 如果bit0为0，则idx=idx+1，即表示下一个bin */
         idx += ~smallbits & 1;       /* Uses next bin if idx empty */
+        /* 根据small bin索引获取small bin头指针 */
         b = smallbin_at(gm, idx);
-        p = b->fd;
+        p = b->fd;  /* fd: next chunk pointer */
         assert(chunksize(p) == small_index2size(idx));
-        unlink_first_small_chunk(gm, b, p, idx);
+        unlink_first_small_chunk(gm, b, p, idx); /* idx 用来清理smallmap */
+        /* 当前chunk的C和P位置1，以及下一个chunk的P位置1 */
         set_inuse_and_pinuse(gm, p, small_index2size(idx));
         mem = chunk2mem(p);
         check_malloced_chunk(gm, mem, nb);
         goto postaction;
-      }
-
+      } /* (smallbits & 0x3U) != 0 */
+        
+      /* 当前bin和下一个bin均为空，且当前需要申请内存大小超过designated victim的大小，需要
+       * 从更大的small bin中分配chunk
+       */
       else if (nb > gm->dvsize) {
         if (smallbits != 0) { /* Use chunk in next nonempty smallbin */
           mchunkptr b, p, r;
           size_t rsize;
           bindex_t i;
+          /* example: idx = 1, left_bits: b0000_0010 -> b1111_1100
+           * leftbits = idx及更低位bit为0，其余比特保留smallbits值
+           */
           binmap_t leftbits = (smallbits << idx) & left_bits(idx2bit(idx));
           binmap_t leastbit = least_bit(leftbits);
           compute_bit2idx(leastbit, i);
+          /* 最终找到索引大于idx的第一个small bin */
           b = smallbin_at(gm, i);
           p = b->fd;
           assert(chunksize(p) == small_index2size(i));
           unlink_first_small_chunk(gm, b, p, i);
+          /* 当前small bin的chunk块分配后剩余的大小 */
           rsize = small_index2size(i) - nb;
           /* Fit here cannot be remainderless if 4byte sizes */
           if (SIZE_T_SIZE != 4 && rsize < MIN_CHUNK_SIZE)
+            /* 把当前整个chunk分配给user，不更新dv */
             set_inuse_and_pinuse(gm, p, small_index2size(i));
           else {
+            /* 对chunk p进行拆分 */
             set_size_and_pinuse_of_inuse_chunk(gm, p, nb);
             r = chunk_plus_offset(p, nb);
+            /* r是p分配了用户内存之后剩余的内存，转换成新的free chunk
+             * C = 0; P = 1; foot = rsize
+             */
             set_size_and_pinuse_of_free_chunk(r, rsize);
+            /* 把老的dv插入到对应的small bin中
+             * 用新的chunk替换dv
+             */
             replace_dv(gm, r, rsize);
           }
           mem = chunk2mem(p);
           check_malloced_chunk(gm, mem, nb);
           goto postaction;
-        }
+        } /* smallbits != 0 */
 
+        /* nb超过dvsize且当前small bin均为空
+         * tree bins非空
+         */
         else if (gm->treemap != 0 && (mem = tmalloc_small(gm, nb)) != 0) {
           check_malloced_chunk(gm, mem, nb);
           goto postaction;
@@ -4669,6 +4699,7 @@ void* dlmalloc(size_t bytes) {
     return mem;
   }
 
+  /* FAILURE of PREACTION */
   return 0;
 }
 

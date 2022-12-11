@@ -1,5 +1,5 @@
 include config.mk
-include make_helper/helpers.mk
+include script/helpers.mk
 
 SUB_DIRS := src/alg \
 			src/ds \
