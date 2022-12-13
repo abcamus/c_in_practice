@@ -1,0 +1,1 @@
+add_executable(test_compiler main.c weak.c)

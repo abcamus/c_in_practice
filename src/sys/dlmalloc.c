@@ -4509,7 +4509,8 @@ static void* tmalloc_small(mstate m, size_t nb) {
   compute_bit2idx(leastbit, i);
   v = t = *treebin_at(m, i);
   rsize = chunksize(t) - nb;
-
+  
+  /* 找到一个最接近nb的chunk */
   while ((t = leftmost_child(t)) != 0) {
     size_t trem = chunksize(t) - nb;
     if (trem < rsize) {

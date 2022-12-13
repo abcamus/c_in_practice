@@ -1,6 +1,12 @@
 # c_in_practice
 
-## History
+## Build
+
+```bash
+$ mkdir build; cd build; cmake ..; make
+```
+
+## Revisions
 
 - 2022-12-10: add dlmalloc 2.8.6
 

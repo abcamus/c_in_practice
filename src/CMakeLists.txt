@@ -1,0 +1,10 @@
+add_subdirectory(algorithm)
+add_subdirectory(compiler)
+add_subdirectory(data_structure)
+add_subdirectory(design_pattern)
+add_subdirectory(primitive)
+add_subdirectory(sys)
+
+# file(GLOB SRC_FILES *.c *.cpp)
+AUX_SOURCE_DIRECTORY(. SRC_FILES)
+add_executable(demo ${SRC_FILES})
