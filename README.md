@@ -7,7 +7,12 @@ Hope it makes some sense to C/C++ programmers.
 ## Build
 
 ```bash
-$ mkdir build; cd build; cmake ..; make
+$ cmake -B build; make -C build
+```
+
+## Run Unit Tests
+```bash
+$ ./build/test/test_main
 ```
 
 ## Revisions
