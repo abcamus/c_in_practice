@@ -1,1 +1,1 @@
-add_executable(test_compiler main.c weak.c)
+add_executable(demo_compiler main.c weak.c)

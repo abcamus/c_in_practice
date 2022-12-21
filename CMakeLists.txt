@@ -9,3 +9,4 @@ set(CMAKE_CXX_FLAGS_DEBUG "-std=c++11 -O0 -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-std=c++11 -O2")
 
 add_subdirectory(src)
+add_subdirectory(test)

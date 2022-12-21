@@ -1,5 +1,9 @@
 # c_in_practice
 
+This is a project which demenstrates some useful coding knowledge. 
+
+Hope it makes some sense to C/C++ programmers.
+
 ## Build
 
 ```bash
