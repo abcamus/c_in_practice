@@ -9,3 +9,4 @@ set(SRC
 add_executable(test_main ${SRC})
 target_include_directories(test_main PRIVATE include)
 target_link_libraries(test_main ${PROJECT_SOURCE_DIR}/lib/libgtest.a)
+target_link_libraries(test_main alg)
