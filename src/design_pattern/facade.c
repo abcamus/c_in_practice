@@ -6,11 +6,11 @@
  */
 
 typedef struct {
-
+    int a;
 } Parser;
 
 typedef struct {
-
+    char *name;
 } Node;
 
 typedef struct _Scanner {

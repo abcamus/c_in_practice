@@ -9,7 +9,7 @@
 
 class Solution {
     int pick;
-    int guess(int num) {
+    int guess(long long num) {
         return num == pick ? 0 : (num > pick ? -1 : 1);
     }
 public:
